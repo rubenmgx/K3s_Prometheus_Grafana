@@ -1,14 +1,15 @@
 #!/bin/bash
 
 echo "=============================================="
-echo "🧹 K3s Prometheus & Grafana Teardown"
+echo "🧹 K3s Prometheus & Grafana Teardown for macOS (Docker-based)"
 echo "=============================================="
 echo ""
-echo "This script will completely remove:"
-echo "  • K3s cluster and all workloads"
+echo "This script will attempt to completely remove:"
+echo "  • K3s Docker container and its data"
 echo "  • Kubeconfig files"
 echo "  • Test directories and data"
 echo "  • Prometheus MCP server containers (if running)"
+echo "  • Helm (optional)"
 echo ""
 
 # Function to ask for confirmation
@@ -19,9 +20,10 @@ confirm() {
 }
 
 # Set test directory path (same as setup.sh)
-TEST_DIR=$HOME/spre-ai-hackathon-experiment/k3s-prom-graf
+TEST_DIR="$HOME/spre-ai-hackathon-experiment/k3s-prom-graf"
+K3S_CONTAINER_NAME="k3s-container"
 
-echo "⚠️  WARNING: This will permanently delete all cluster data!"
+echo "⚠️  WARNING: This will permanently delete K3s cluster data!"
 if ! confirm "Are you sure you want to proceed?"; then
     echo "Teardown cancelled."
     exit 0
@@ -34,7 +36,6 @@ echo ""
 # Stop and remove any running prometheus-mcp-server containers
 echo "1️⃣  Stopping Prometheus MCP server containers..."
 if command -v docker &> /dev/null; then
-    # Stop any running prometheus-mcp-server containers
     RUNNING_CONTAINERS=$(docker ps --filter "ancestor=ghcr.io/pab1it0/prometheus-mcp-server:latest" -q)
     if [ ! -z "$RUNNING_CONTAINERS" ]; then
         echo "   Stopping running Prometheus MCP containers..."
@@ -47,43 +48,21 @@ else
     echo "   Docker not available, skipping container cleanup."
 fi
 
-# Uninstall k3s completely
+# Stop and remove k3s Docker container
 echo ""
-echo "2️⃣  Uninstalling K3s cluster..."
-if [ -f /usr/local/bin/k3s-uninstall.sh ]; then
-    echo "   Running k3s uninstall script..."
-    sudo /usr/local/bin/k3s-uninstall.sh
-    echo "   K3s uninstalled successfully."
+echo "2️⃣  Stopping and removing K3s Docker container..."
+if command -v docker &> /dev/null; then
+    if docker ps -a --filter "name=${K3S_CONTAINER_NAME}" --format "{{.ID}}" | grep -q .; then
+        echo "   Stopping K3s container '${K3S_CONTAINER_NAME}'..."
+        docker stop "${K3S_CONTAINER_NAME}"
+        echo "   Removing K3s container '${K3S_CONTAINER_NAME}'..."
+        docker rm "${K3S_CONTAINER_NAME}"
+        echo "   K3s container removed."
+    else
+        echo "   K3s container '${K3S_CONTAINER_NAME}' not found."
+    fi
 else
-    echo "   K3s uninstall script not found. Attempting manual cleanup..."
-    
-    # Stop k3s service if it exists
-    if systemctl is-active --quiet k3s; then
-        echo "   Stopping k3s service..."
-        sudo systemctl stop k3s
-        sudo systemctl disable k3s
-    fi
-    
-    # Remove k3s systemd service file
-    if [ -f /etc/systemd/system/k3s.service ]; then
-        echo "   Removing k3s systemd service..."
-        sudo rm -f /etc/systemd/system/k3s.service
-        sudo systemctl daemon-reload
-    fi
-    
-    # Kill any remaining k3s processes
-    echo "   Killing any remaining k3s processes..."
-    sudo pkill -f k3s || true
-    
-    # Remove k3s binary and related files
-    echo "   Removing k3s binaries and files..."
-    sudo rm -f /usr/local/bin/k3s
-    sudo rm -f /usr/local/bin/kubectl
-    sudo rm -f /usr/local/bin/crictl
-    sudo rm -f /usr/local/bin/ctr
-    sudo rm -rf /etc/rancher/k3s
-    sudo rm -rf /var/lib/rancher/k3s
-    sudo rm -f /usr/local/bin/k3s-*
+    echo "   Docker not available, skipping K3s container cleanup."
 fi
 
 # Clean up kubeconfig
@@ -95,7 +74,7 @@ if [ -f "$HOME/.kube/config" ]; then
     rm -f "$HOME/.kube/config"
     echo "   Kubeconfig removed."
 else
-    echo "   No kubeconfig found."
+    echo "   No kubeconfig found at $HOME/.kube/config."
 fi
 
 # Remove test directories
@@ -106,65 +85,54 @@ if [ -d "$TEST_DIR" ]; then
     rm -rf "$TEST_DIR"
     echo "   Test directories removed."
 else
-    echo "   Test directory not found."
+    echo "   Test directory not found: $TEST_DIR."
 fi
 
 # Clean up any lingering container networks or volumes
 echo ""
-echo "5️⃣  Cleaning up container resources..."
+echo "5️⃣  Cleaning up Docker resources (general prune)..."
 if command -v docker &> /dev/null; then
-    echo "   Pruning unused Docker resources..."
-    docker system prune -f --volumes > /dev/null 2>&1 || true
+    echo "   Pruning unused Docker system resources (images, containers, volumes, networks)..."
+    docker system prune -f --all-volumes > /dev/null 2>&1 || true
     echo "   Docker cleanup completed."
+else
+    echo "   Docker not available, skipping Docker resource cleanup."
 fi
 
 # Optional: Remove helm (ask user)
 echo ""
 if command -v helm &> /dev/null; then
     if confirm "6️⃣  Remove Helm? (You may want to keep it for other projects)"; then
-        echo "   Removing Helm..."
-        sudo dnf remove helm -y
-        echo "   Helm removed."
+        if command -v brew &> /dev/null; then
+            echo "   Removing Helm via Homebrew..."
+            brew uninstall helm
+            echo "   Helm removed."
+        else
+            echo "   Helm found, but Homebrew not available. Please uninstall Helm manually if needed."
+        fi
     else
         echo "   Keeping Helm installed."
     fi
 else
-    echo "6️⃣  Helm not installed, skipping."
+    echo "6️⃣  Helm not found, skipping."
 fi
-
-# Clean up any remaining iptables rules (k3s sometimes leaves these)
-echo ""
-echo "7️⃣  Cleaning up network configuration..."
-if command -v iptables &> /dev/null; then
-    echo "   Flushing iptables rules created by k3s..."
-    # Only remove k3s specific chains if they exist
-    sudo iptables-save | grep -v "KUBE\|CNI" | sudo iptables-restore || true
-    echo "   Network cleanup completed."
-fi
-
-# Clean up systemd if needed
-echo ""
-echo "8️⃣  Final systemd cleanup..."
-sudo systemctl daemon-reload
-sudo systemctl reset-failed
 
 echo ""
 echo "=============================================="
 echo "✅ Teardown Complete!"
 echo "=============================================="
 echo ""
-echo "Your system has been returned to pre-installation state:"
-echo "  ✓ K3s cluster removed"
-echo "  ✓ All workloads and data deleted"  
+echo "Your system has been returned to a pre-installation state (as much as possible for macOS):"
+echo "  ✓ K3s Docker container removed"
+echo "  ✓ All workloads and data deleted"
 echo "  ✓ Kubeconfig cleaned up (backed up)"
 echo "  ✓ Test directories removed"
-echo "  ✓ Container resources cleaned"
-echo "  ✓ Network configuration reset"
+echo "  ✓ Docker container resources cleaned"
 echo ""
-echo "💡 You can now run setup.sh again for a fresh installation."
+echo "💡 You can now run the macOS-adapted setup.sh again for a fresh installation."
 echo ""
 echo "📋 If you encounter any issues:"
-echo "   • Reboot the system to clear any lingering processes"
-echo "   • Check for any remaining k3s processes: ps aux | grep k3s"
-echo "   • Manually remove /var/lib/rancher if it still exists"
-echo "" 
+echo "   • Ensure Docker Desktop is fully shut down and restarted if issues persist."
+echo "   • Check for any remaining k3s processes (unlikely with Docker setup): ps aux | grep k3s"
+echo "   • Manually check and remove any K3s data directories like '$TEST_DIR' if they persist."
+echo ""
