@@ -1,0 +1,308 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: ruben-api-error-alerts
+  namespace: monitoring
+  labels:
+    app: kube-prometheus-stack
+    release: prometheus
+spec:
+  groups:
+  - name: ruben-api-errors
+    interval: 30s
+    rules:
+    
+    # Critical API Error Rate Alerts
+    - alert: RubenAPIErrorRateCritical
+      expr: sum(rate(apiserver_request_total{code!~"2..",job="apiserver"}[5m])) > 1.0
+      for: 2m
+      labels:
+        severity: critical
+        component: api-server
+        dashboard: ruben-test
+      annotations:
+        summary: "API server error rate is critically high"
+        description: "API server error rate is {{ $value | printf \"%.2f\" }} req/s, which exceeds the critical threshold of 1.0 req/s"
+        runbook_url: "https://github.com/rubenmgx/cursor-sop/blob/main/ruben_api_sop/API_ERROR_MONITORING_SOP.md"
+        dashboard_url: "http://localhost:3000/d/ruben-api-errors/ruben-test"
+
+    - alert: RubenAPIErrorRateHigh
+      expr: sum(rate(apiserver_request_total{code!~"2..",job="apiserver"}[5m])) > 0.5
+      for: 5m
+      labels:
+        severity: warning
+        component: api-server
+        dashboard: ruben-test
+      annotations:
+        summary: "API server error rate is high"
+        description: "API server error rate is {{ $value | printf \"%.2f\" }} req/s, which exceeds the warning threshold of 0.5 req/s"
+        runbook_url: "https://github.com/rubenmgx/cursor-sop/blob/main/ruben_api_sop/API_ERROR_MONITORING_SOP.md"
+        dashboard_url: "http://localhost:3000/d/ruben-api-errors/ruben-test"
+
+    # Error Percentage Alerts
+    - alert: RubenAPIErrorPercentageCritical
+      expr: (sum(rate(apiserver_request_total{code!~"2..",job="apiserver"}[5m])) / sum(rate(apiserver_request_total{job="apiserver"}[5m]))) * 100 > 10
+      for: 3m
+      labels:
+        severity: critical
+        component: api-server
+        dashboard: ruben-test
+      annotations:
+        summary: "API server error percentage is critically high"
+        description: "API server error percentage is {{ $value | printf \"%.1f\" }}%, which exceeds the critical threshold of 10%"
+        runbook_url: "https://github.com/rubenmgx/cursor-sop/blob/main/ruben_api_sop/API_ERROR_MONITORING_SOP.md"
+        dashboard_url: "http://localhost:3000/d/ruben-api-errors/ruben-test"
+
+    - alert: RubenAPIErrorPercentageHigh
+      expr: (sum(rate(apiserver_request_total{code!~"2..",job="apiserver"}[5m])) / sum(rate(apiserver_request_total{job="apiserver"}[5m]))) * 100 > 5
+      for: 5m
+      labels:
+        severity: warning
+        component: api-server
+        dashboard: ruben-test
+      annotations:
+        summary: "API server error percentage is high"
+        description: "API server error percentage is {{ $value | printf \"%.1f\" }}%, which exceeds the warning threshold of 5%"
+        runbook_url: "https://github.com/rubenmgx/cursor-sop/blob/main/ruben_api_sop/API_ERROR_MONITORING_SOP.md"
+        dashboard_url: "http://localhost:3000/d/ruben-api-errors/ruben-test"
+
+    # 5xx Internal Server Error Alerts
+    - alert: RubenAPI5xxErrorsCritical
+      expr: sum(rate(apiserver_request_total{code=~"5..",job="apiserver"}[5m])) > 0.2
+      for: 1m
+      labels:
+        severity: critical
+        component: api-server
+        dashboard: ruben-test
+      annotations:
+        summary: "API server 5xx internal errors detected"
+        description: "API server 5xx error rate is {{ $value | printf \"%.3f\" }} req/s. Any 5xx errors indicate serious server-side issues"
+        runbook_url: "https://github.com/rubenmgx/cursor-sop/blob/main/ruben_api_sop/API_ERROR_MONITORING_SOP.md"
+        dashboard_url: "http://localhost:3000/d/ruben-api-errors/ruben-test"
+
+    - alert: RubenAPI5xxErrorsWarning
+      expr: sum(rate(apiserver_request_total{code=~"5..",job="apiserver"}[5m])) > 0.05
+      for: 3m
+      labels:
+        severity: warning
+        component: api-server
+        dashboard: ruben-test
+      annotations:
+        summary: "API server 5xx internal errors detected"
+        description: "API server 5xx error rate is {{ $value | printf \"%.3f\" }} req/s. Investigation required"
+        runbook_url: "https://github.com/rubenmgx/cursor-sop/blob/main/ruben_api_sop/API_ERROR_MONITORING_SOP.md"
+        dashboard_url: "http://localhost:3000/d/ruben-api-errors/ruben-test"
+
+    # Authentication Error Alerts
+    - alert: RubenAPIAuthErrorsCritical
+      expr: sum(rate(apiserver_request_total{code=~"40[13]",job="apiserver"}[5m])) > 0.5
+      for: 2m
+      labels:
+        severity: critical
+        component: api-server
+        dashboard: ruben-test
+      annotations:
+        summary: "High API server authentication errors detected"
+        description: "API server authentication error rate is {{ $value | printf \"%.3f\" }} req/s. Possible security incident"
+        runbook_url: "https://github.com/rubenmgx/cursor-sop/blob/main/ruben_api_sop/API_ERROR_MONITORING_SOP.md"
+        dashboard_url: "http://localhost:3000/d/ruben-api-errors/ruben-test"
+
+    - alert: RubenAPIAuthErrorsWarning
+      expr: sum(rate(apiserver_request_total{code=~"40[13]",job="apiserver"}[5m])) > 0.2
+      for: 5m
+      labels:
+        severity: warning
+        component: api-server
+        dashboard: ruben-test
+      annotations:
+        summary: "Elevated API server authentication errors"
+        description: "API server authentication error rate is {{ $value | printf \"%.3f\" }} req/s. Monitor for patterns"
+        runbook_url: "https://github.com/rubenmgx/cursor-sop/blob/main/ruben_api_sop/API_ERROR_MONITORING_SOP.md"
+        dashboard_url: "http://localhost:3000/d/ruben-api-errors/ruben-test"
+
+    # Client Error Alerts
+    - alert: RubenAPIClientErrorsHigh
+      expr: sum(rate(apiserver_request_total{code=~"4..",code!~"40[13]",job="apiserver"}[5m])) > 0.5
+      for: 5m
+      labels:
+        severity: warning
+        component: api-server
+        dashboard: ruben-test
+      annotations:
+        summary: "High API server client errors (4xx)"
+        description: "API server client error rate is {{ $value | printf \"%.3f\" }} req/s. Check client configurations"
+        runbook_url: "https://github.com/rubenmgx/cursor-sop/blob/main/ruben_api_sop/API_ERROR_MONITORING_SOP.md"
+        dashboard_url: "http://localhost:3000/d/ruben-api-errors/ruben-test"
+
+    # High Latency for Errors
+    - alert: RubenAPIErrorLatencyHigh
+      expr: histogram_quantile(0.95, sum(rate(apiserver_request_duration_seconds_bucket{code!~"2..",job="apiserver"}[5m])) by (le)) > 5
+      for: 5m
+      labels:
+        severity: warning
+        component: api-server
+        dashboard: ruben-test
+      annotations:
+        summary: "High latency for API server error responses"
+        description: "P95 latency for API server errors is {{ $value | printf \"%.2f\" }}s, indicating performance issues"
+        runbook_url: "https://github.com/rubenmgx/cursor-sop/blob/main/ruben_api_sop/API_ERROR_MONITORING_SOP.md"
+        dashboard_url: "http://localhost:3000/d/ruben-api-errors/ruben-test"
+
+    - alert: RubenAPIErrorLatencyCritical
+      expr: histogram_quantile(0.99, sum(rate(apiserver_request_duration_seconds_bucket{code!~"2..",job="apiserver"}[5m])) by (le)) > 10
+      for: 3m
+      labels:
+        severity: critical
+        component: api-server
+        dashboard: ruben-test
+      annotations:
+        summary: "Critical latency for API server error responses"
+        description: "P99 latency for API server errors is {{ $value | printf \"%.2f\" }}s, indicating severe performance degradation"
+        runbook_url: "https://github.com/rubenmgx/cursor-sop/blob/main/ruben_api_sop/API_ERROR_MONITORING_SOP.md"
+        dashboard_url: "http://localhost:3000/d/ruben-api-errors/ruben-test"
+
+    # API Server Availability
+    - alert: RubenAPIServerDown
+      expr: up{job="apiserver"} == 0
+      for: 1m
+      labels:
+        severity: critical
+        component: api-server
+        dashboard: ruben-test
+      annotations:
+        summary: "API server is down"
+        description: "API server has been down for more than 1 minute"
+        runbook_url: "https://github.com/rubenmgx/cursor-sop/blob/main/ruben_api_sop/API_ERROR_MONITORING_SOP.md"
+        dashboard_url: "http://localhost:3000/d/ruben-api-errors/ruben-test"
+
+    # High Error Rate by Specific HTTP Methods
+    - alert: RubenAPIMethodErrorsHigh
+      expr: sum(rate(apiserver_request_total{code!~"2..",job="apiserver"}[5m])) by (verb) > 0.3
+      for: 5m
+      labels:
+        severity: warning
+        component: api-server
+        dashboard: ruben-test
+      annotations:
+        summary: "High error rate for HTTP method {{ $labels.verb }}"
+        description: "Error rate for {{ $labels.verb }} method is {{ $value | printf \"%.3f\" }} req/s"
+        runbook_url: "https://github.com/rubenmgx/cursor-sop/blob/main/ruben_api_sop/API_ERROR_MONITORING_SOP.md"
+        dashboard_url: "http://localhost:3000/d/ruben-api-errors/ruben-test"
+
+    # High Error Rate by Resource Type
+    - alert: RubenAPIResourceErrorsHigh
+      expr: sum(rate(apiserver_request_total{code!~"2..",job="apiserver"}[5m])) by (resource) > 0.2
+      for: 5m
+      labels:
+        severity: warning
+        component: api-server
+        dashboard: ruben-test
+      annotations:
+        summary: "High error rate for resource {{ $labels.resource }}"
+        description: "Error rate for {{ $labels.resource }} resource is {{ $value | printf \"%.3f\" }} req/s"
+        runbook_url: "https://github.com/rubenmgx/cursor-sop/blob/main/ruben_api_sop/API_ERROR_MONITORING_SOP.md"
+        dashboard_url: "http://localhost:3000/d/ruben-api-errors/ruben-test"
+
+  # Recording Rules for Dashboard Performance
+  - name: ruben-api-recording-rules
+    interval: 30s
+    rules:
+    
+    # Total error rate
+    - record: ruben:apiserver_error_rate
+      expr: sum(rate(apiserver_request_total{code!~"2..",job="apiserver"}[5m]))
+      
+    # Error percentage  
+    - record: ruben:apiserver_error_percentage
+      expr: (sum(rate(apiserver_request_total{code!~"2..",job="apiserver"}[5m])) / sum(rate(apiserver_request_total{job="apiserver"}[5m]))) * 100
+      
+    # 5xx error rate
+    - record: ruben:apiserver_5xx_error_rate
+      expr: sum(rate(apiserver_request_total{code=~"5..",job="apiserver"}[5m]))
+      
+    # Auth error rate
+    - record: ruben:apiserver_auth_error_rate
+      expr: sum(rate(apiserver_request_total{code=~"40[13]",job="apiserver"}[5m]))
+      
+    # Client error rate (4xx excluding auth)
+    - record: ruben:apiserver_client_error_rate
+      expr: sum(rate(apiserver_request_total{code=~"4..",code!~"40[13]",job="apiserver"}[5m]))
+      
+    # P95 error latency
+    - record: ruben:apiserver_error_latency_p95
+      expr: histogram_quantile(0.95, sum(rate(apiserver_request_duration_seconds_bucket{code!~"2..",job="apiserver"}[5m])) by (le))
+      
+    # P99 error latency
+    - record: ruben:apiserver_error_latency_p99
+      expr: histogram_quantile(0.99, sum(rate(apiserver_request_duration_seconds_bucket{code!~"2..",job="apiserver"}[5m])) by (le))
+
+---
+# Alert Manager Configuration Example (Optional)
+# This can be used to configure notification channels
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ruben-alertmanager-config
+  namespace: monitoring
+data:
+  alertmanager.yml: |
+    global:
+      smtp_smarthost: 'localhost:587'
+      smtp_from: 'alerts@example.com'
+    
+    route:
+      group_by: ['alertname', 'cluster', 'service']
+      group_wait: 10s
+      group_interval: 10s
+      repeat_interval: 1h
+      receiver: 'ruben-api-alerts'
+      routes:
+      - match:
+          dashboard: ruben-test
+        receiver: 'ruben-api-team'
+        routes:
+        - match:
+            severity: critical
+          receiver: 'ruben-critical-alerts'
+    
+    receivers:
+    - name: 'ruben-api-alerts'
+      webhook_configs:
+      - url: 'http://slack-webhook-url'
+        send_resolved: true
+        title: 'Ruben API Alert: {{ range .Alerts }}{{ .Annotations.summary }}{{ end }}'
+        text: |
+          {{ range .Alerts }}
+          **Alert:** {{ .Annotations.summary }}
+          **Description:** {{ .Annotations.description }}
+          **Dashboard:** {{ .Annotations.dashboard_url }}
+          **Runbook:** {{ .Annotations.runbook_url }}
+          {{ end }}
+    
+    - name: 'ruben-api-team'
+      email_configs:
+      - to: 'ruben-api-team@example.com'
+        subject: 'Ruben API Alert: {{ .GroupLabels.alertname }}'
+        body: |
+          {{ range .Alerts }}
+          Alert: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          Dashboard: {{ .Annotations.dashboard_url }}
+          Runbook: {{ .Annotations.runbook_url }}
+          {{ end }}
+    
+    - name: 'ruben-critical-alerts'
+      email_configs:
+      - to: 'ruben-oncall@example.com'
+        subject: 'CRITICAL: Ruben API Alert'
+        body: |
+          CRITICAL ALERT DETECTED
+          
+          {{ range .Alerts }}
+          Alert: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          Dashboard: {{ .Annotations.dashboard_url }}
+          Runbook: {{ .Annotations.runbook_url }}
+          
+          Immediate action required!
+          {{ end }} 
