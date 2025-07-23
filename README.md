@@ -1,4 +1,4 @@
-# K3s + Prometheus + Grafana Setup for Fedora 42
+# K3s + Prometheus + Grafana Setup for Mac OS
 
 This directory contains scripts for setting up and tearing down a complete Kubernetes monitoring stack on MAcOS, designed for experimenting with Prometheus MCP servers.
 
