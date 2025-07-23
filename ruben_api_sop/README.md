@@ -9,6 +9,7 @@ This folder contains comprehensive Standard Operating Procedures for monitoring 
 | File | Purpose | Usage |
 |------|---------|-------|
 | **`API_ERROR_MONITORING_SOP.md`** | Complete operational procedures | Primary reference for incidents |
+| **`ALERT_MANAGEMENT_SOP.md`** | Alert-specific response procedures | Alert lifecycle & escalation |
 | **`DASHBOARD_QUICK_REFERENCE.md`** | Dashboard usage guide | Quick troubleshooting actions |
 | **`api-error-alerts.yaml`** | Prometheus alert rules | Deploy to enable automated alerts |
 
@@ -26,10 +27,12 @@ open http://localhost:3000/d/ruben-api-errors/ruben-test
 ```
 
 ### **2. Daily Monitoring (5 minutes)**
-1. Check **🚨 Total API Error Rate** - should be green (<0.1 req/s)
-2. Monitor **📊 API Error Percentage** - should be <1%
-3. Verify **💥 5xx Internal Errors** - should be 0
-4. Review **🔐 Authentication Errors** - watch for spikes
+1. Check **🚨 Active Ruben Alerts** - should be 0 (green)
+2. Monitor **🔥 Critical Alerts** - should be 0 (green)  
+3. Review **⚠️ Warning Alerts** - should be minimal
+4. Check **🚨 Total API Error Rate** - should be green (<0.1 req/s)
+5. Monitor **📊 API Error Percentage** - should be <1%
+6. Verify **💥 5xx Internal Errors** - should be 0
 
 ### **3. Alert Setup**
 ```bash
@@ -89,8 +92,8 @@ kubectl wait --for=condition=ready pod -l component=kube-apiserver -n kube-syste
 - **Time**: 2-5 minutes
 
 ### **📚 For Incident Response**
-- **Use**: `API_ERROR_MONITORING_SOP.md`
-- **Purpose**: Complete troubleshooting procedures and escalation
+- **Use**: `API_ERROR_MONITORING_SOP.md` + `ALERT_MANAGEMENT_SOP.md`
+- **Purpose**: Complete troubleshooting procedures and alert-specific responses
 - **Time**: 15-60 minutes depending on severity
 
 ### **⚙️ For Alert Configuration**
@@ -134,8 +137,10 @@ kubectl wait --for=condition=ready pod -l component=kube-apiserver -n kube-syste
 
 ### **Dashboard Links**
 - **Ruben Test Dashboard**: http://localhost:3000/d/ruben-api-errors/ruben-test
+- **Ruben Alerts Dashboard**: http://localhost:3000/d/ruben-alerts-dashboard/ruben-alerts
 - **Grafana Home**: http://localhost:3000
 - **Prometheus**: http://localhost:9090
+- **Prometheus Alerts**: http://localhost:9090/alerts
 
 ### **External Documentation**
 - [Kubernetes API Server Troubleshooting](https://kubernetes.io/docs/tasks/debug-application-cluster/debug-cluster/)
@@ -168,12 +173,19 @@ To update these SOPs:
 # Edit main SOP
 vim ruben_api_sop/API_ERROR_MONITORING_SOP.md
 
+# Edit alert-specific SOP
+vim ruben_api_sop/ALERT_MANAGEMENT_SOP.md
+
 # Edit quick reference
 vim ruben_api_sop/DASHBOARD_QUICK_REFERENCE.md
 
 # Update alert rules
 vim ruben_api_sop/api-error-alerts.yaml
 kubectl apply -f ruben_api_sop/api-error-alerts.yaml
+
+# Access dashboards
+open http://localhost:3000/d/ruben-api-errors/ruben-test
+open http://localhost:3000/d/ruben-alerts-dashboard/ruben-alerts
 ```
 
 ---
