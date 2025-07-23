@@ -1,10 +1,9 @@
-# K3s Prometheus & Grafana Setup for Fedora 42
+# K3s Prometheus & Grafana Setup for MAC OS
 
-Updated setup guide for running K3s with Prometheus and Grafana monitoring on Fedora 42.
+Updated setup guide for running K3s with Prometheus and Grafana monitoring
 
 ## Prerequisites
 
-- Fedora 42 system with sudo access
 - At least 4GB RAM recommended
 - Internet connection for downloading packages and container images
 
@@ -75,16 +74,6 @@ kubectl logs -n monitoring <pod-name>
 
 # Check node resources
 kubectl describe nodes
-```
-
-### SELinux issues (if applicable)
-Fedora 42 has SELinux enabled by default. If you encounter permission issues:
-```bash
-# Check SELinux status
-sestatus
-
-# If needed, set SELinux to permissive for testing (not recommended for production)
-sudo setenforce 0
 ```
 
 ## Customization
