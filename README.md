@@ -1,6 +1,6 @@
 # K3s + Prometheus + Grafana Setup for Fedora 42
 
-This directory contains scripts for setting up and tearing down a complete Kubernetes monitoring stack on Fedora 42, designed for experimenting with Prometheus MCP servers.
+This directory contains scripts for setting up and tearing down a complete Kubernetes monitoring stack on MAcOS, designed for experimenting with Prometheus MCP servers.
 
 ## Quick Start
 
@@ -26,7 +26,6 @@ This directory contains scripts for setting up and tearing down a complete Kuber
 
 - `setup.sh` - Main installation script
 - `teardown.sh` - Complete removal script  
-- `FEDORA_42_SETUP.md` - Detailed setup guide with troubleshooting
 - `k3s-monitoring/` - Monitoring stack configuration files
 
 ## Integration with Prometheus MCP Server
@@ -38,20 +37,42 @@ After running `setup.sh`, you'll get a complete mcp.json configuration snippet t
   "mcpServers": {
     "prometheus": {
       "command": "docker",
+      "transport": "stdio",
       "args": [
         "run",
         "-i",
         "--rm",
+        "--network=host",
         "-e",
         "PROMETHEUS_URL",
         "ghcr.io/pab1it0/prometheus-mcp-server:latest"
       ],
       "env": {
-        "PROMETHEUS_URL": "http://YOUR_IP:NODE_PORT"
+        "PROMETHEUS_URL": "http://localhost:xxxx"
+      }
+    },
+    "grafana": {
+      "command": "docker",
+      "transport": "stdio",
+      "args": [
+        "run",
+        "--rm",
+        "-i",
+        "--network=host",
+        "-e",
+        "GRAFANA_URL",
+        "-e", 
+        "GRAFANA_API_KEY",
+        "docker.io/mcp/grafana",
+        "-transport",
+        "stdio"
+      ],
+      "env": {
+        "GRAFANA_URL": "http://localhost:xxxx",
+        "GRAFANA_API_KEY": "xxxx"
       }
     }
   }
-}
 ```
 
 ## Experiment Safely
@@ -63,7 +84,6 @@ This is designed for experimentation:
 
 ## Requirements
 
-- Fedora 42 with sudo access
 - At least 4GB RAM recommended
 - Internet connection for downloads
 
@@ -83,9 +103,6 @@ This is designed for experimentation:
 - Optional Helm removal
 - Returns system to pre-installation state
 
-## Troubleshooting
-
-See `FEDORA_42_SETUP.md` for detailed troubleshooting guidance.
 
 ## Security Notes
 
